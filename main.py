@@ -1,4 +1,3 @@
-# https://github.com/ipapMaster/flaskLessons
 from flask import Flask, url_for, request, redirect
 from flask import render_template
 import json
@@ -58,7 +57,7 @@ def weather_form():
         icon = weather['weather'][0]['icon']
         return render_template('weather_form.html',
                                title=f'Погода в городе {town}',
-                               town=town, data=weather)
+                               town=town, data=weather, icon=icon, code=code)
 
 
 @app.route('/form_sample', methods=['GET', 'POST'])
