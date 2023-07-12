@@ -44,7 +44,7 @@ def slogan():
 @app.route('/weather_form', methods=['GET', 'POST'])
 def weather_form():
     if request.method == 'GET':
-        render_template('weather_form.html', title='Выбор города')
+        return render_template('weather_form.html', title='Выбор города')
     elif request.method == 'POST':
         town = request.form.get('town')
         data = {}
@@ -55,9 +55,9 @@ def weather_form():
         weather = result.json()
         code = weather['cod']
         icon = weather['weather'][0]['icon']
-        return render_template('weather_form.html',
+        return render_template('weather.html',
                                title=f'Погода в городе {town}',
-                               town=town, data=weather, icon=icon, code=code)
+                               town=town, data=weather, icon=icon)
 
 
 @app.route('/form_sample', methods=['GET', 'POST'])
