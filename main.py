@@ -31,18 +31,21 @@ def news():
     # lst = ['ANN', 'TOM', 'BOB']
     # return render_template('news.html', title="FOR", news=lst)
 
+
 @app.route('/vartest')
 def vartest():
     return render_template('var_test.html', title='Переменные в HTML')
+
 
 @app.route('/slogan')
 def slogan():
     return 'Ибо крепка, как смерть, любовь!<br><a href="/">Назад</a>'
 
-@app.route('/wether', methods=['GET', 'POST'])
-def wether():
+
+@app.route('/weather_form', methods=['GET', 'POST'])
+def weather_form():
     if request.method == 'GET':
-        render_template('wether.html', title='Выбор города')
+        render_template('weather_form.html', title='Выбор города')
     elif request.method == 'POST':
         town = request.form.get('town')
         data = {}
@@ -52,7 +55,10 @@ def wether():
         result = requests.get(url, params=params)
         weather = result.json()
         code = weather['cod']
-        return render_template('wether.html', title=f'Погода в городе {town} town=town')
+        return render_template('weather_form.html',
+                               title=f'Погода в городе {town}',
+                               town=town, data=weather)
+
 
 @app.route('/form_sample', methods=['GET', 'POST'])
 def form_sample():
