@@ -49,9 +49,10 @@ def weather_form():
         town = request.form.get('town')
         data = {}
         key = '781c960b6d63c1e649804cd6a5c74b02'
-        url = 'https://home.openweathermap.org/data/2.5/weather'
+        url = 'https://api.openweathermap.org/data/2.5/weather'
         params = {'APPID': key, 'q': town, 'units': 'metric'}
         result = requests.get(url, params=params)
+        print(result)
         weather = result.json()
         code = weather['cod']
         icon = weather['weather'][0]['icon']
