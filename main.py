@@ -1,9 +1,31 @@
-from flask import Flask, url_for, request, redirect
-from flask import render_template
 import json
 import requests
+from flask import Flask, request, redirect
+from flask import render_template
+from loginform import LoginForm
+from flask_wtf import FlaskForm
+from wtforms.validators import DataRequired
+import sqlalchemy
+from data import db_session
+
+
+# pip install sqlalchemy
 
 app = Flask(__name__)
+app.config['SECRET_KEY'] = 't00 short_Key'
+app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:///db/news.sqlite'
+
+
+# ошибка 404
+# обработчик ошибок
+@app.errorhandler(404)
+def http_404_error(error):
+    return redirect('/error404')
+
+
+@app.route('/error404')
+def well():  # не толко хорошо, но и колодец
+    return render_template('well.html')
 
 
 @app.route('/')
@@ -41,6 +63,20 @@ def slogan():
     return 'Ибо крепка, как смерть, любовь!<br><a href="/">Назад</a>'
 
 
+@app.route('/success')
+def succes():
+    return 'Success'
+
+
+@app.route('/login', methods=['GET', 'POST'])
+def login():
+    form = LoginForm()
+    if form.validate_on_submit():
+        return redirect('/success')
+    return render_template('login.html', title='Авторизация', form=form)
+
+
+
 @app.route('/weather_form', methods=['GET', 'POST'])
 def weather_form():
     if request.method == 'GET':
@@ -56,9 +92,12 @@ def weather_form():
         weather = result.json()
         code = weather['cod']
         icon = weather['weather'][0]['icon']
-        return render_template('weather.html',
-                               title=f'Погода в городе {town}',
-                               town=town, data=weather, icon=icon)
+        temperature = weather['main']['temp']
+        data['code'] = code
+        data['icon'] = icon
+        data['temp'] = temperature
+        return render_template('weather.html', title=f'Погода в городе {town}',
+                               town=town, data=data)
 
 
 @app.route('/form_sample', methods=['GET', 'POST'])
@@ -93,4 +132,5 @@ def load_photo():
 
 
 if __name__ == '__main__':
+    db_session.global_init('db/news.sqlite')
     app.run(host='127.0.0.1', port=5000, debug=True)
