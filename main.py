@@ -55,6 +55,7 @@ def weather_form():
         result = requests.get(url, params=params)
         weather = result.json()
         code = weather['cod']
+        icon = weather['weather'][0]['icon']
         return render_template('weather_form.html',
                                title=f'Погода в городе {town}',
                                town=town, data=weather)
