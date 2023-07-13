@@ -1,30 +1,27 @@
+# https://github.com/ipapMaster/flaskLessons
+from flask import Flask, url_for, request, redirect
+from flask import render_template
 import json
 import requests
-from flask import Flask, request, redirect
-from flask import render_template
 from loginform import LoginForm
-from flask_wtf import FlaskForm
-from wtforms.validators import DataRequired
-import sqlalchemy
 from data import db_session
-
-
-# pip install sqlalchemy
+from mail_sender import send_mail
+from dotenv import load_dotenv
 
 app = Flask(__name__)
-app.config['SECRET_KEY'] = 't00 short_Key'
+
+app.config['SECRET_KEY'] = 'too short key'
 app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:///db/news.sqlite'
 
 
 # ошибка 404
-# обработчик ошибок
 @app.errorhandler(404)
 def http_404_error(error):
     return redirect('/error404')
 
 
 @app.route('/error404')
-def well():  # не толко хорошо, но и колодец
+def well():  # колодец
     return render_template('well.html')
 
 
@@ -64,7 +61,7 @@ def slogan():
 
 
 @app.route('/success')
-def succes():
+def success():
     return 'Success'
 
 
@@ -73,22 +70,23 @@ def login():
     form = LoginForm()
     if form.validate_on_submit():
         return redirect('/success')
-    return render_template('login.html', title='Авторизация', form=form)
-
+    return render_template('login.html',
+                           title='Авторизация',
+                           form=form)
 
 
 @app.route('/weather_form', methods=['GET', 'POST'])
 def weather_form():
     if request.method == 'GET':
-        return render_template('weather_form.html', title='Выбор города')
+        return render_template('weather_form.html',
+                               title='Выбор города')
     elif request.method == 'POST':
         town = request.form.get('town')
         data = {}
-        key = '781c960b6d63c1e649804cd6a5c74b02'
-        url = 'https://api.openweathermap.org/data/2.5/weather'
+        key = 'c747bf84924be997ff13ac5034fa3f86'
+        url = 'http://api.openweathermap.org/data/2.5/weather'
         params = {'APPID': key, 'q': town, 'units': 'metric'}
         result = requests.get(url, params=params)
-        print(result)
         weather = result.json()
         code = weather['cod']
         icon = weather['weather'][0]['icon']
@@ -96,7 +94,8 @@ def weather_form():
         data['code'] = code
         data['icon'] = icon
         data['temp'] = temperature
-        return render_template('weather.html', title=f'Погода в городе {town}',
+        return render_template('weather.html',
+                               title=f'Погода в городе {town}',
                                town=town, data=data)
 
 
@@ -129,6 +128,19 @@ def load_photo():
         f = request.files['file']  # request.form.get('file')
         f.save('./static/images/loaded.png')
         return '<h1>Файл у Вас на сервере</h1>'
+
+
+@app.route('/mail', methods=['GET'])
+def get_form():
+    return render_template('mail_send.html')
+
+
+@app.route('/mail', methods=['POST'])
+def post_form():
+    email = request.values.get('email')
+    if send_mail(email, 'Вам письмо', 'Текст письма'):
+        return f'Письмо на адрес {email} отправлено успешно!'
+    return 'Сбой при отправке'
 
 
 if __name__ == '__main__':
