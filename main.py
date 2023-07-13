@@ -3,10 +3,13 @@ from flask import Flask, url_for, request, redirect
 from flask import render_template
 import json
 import requests
+from sqlalchemy.orm import sessionmaker
+
 from loginform import LoginForm
 from data import db_session
 from mail_sender import send_mail
 from dotenv import load_dotenv
+from data.users import User
 
 app = Flask(__name__)
 
@@ -145,4 +148,11 @@ def post_form():
 
 if __name__ == '__main__':
     db_session.global_init('db/news.sqlite')
-    app.run(host='127.0.0.1', port=5000, debug=True)
+    # app.run(host='127.0.0.1', port=5000, debug=True)
+    user = User()
+    user.name = 'Voldemar'
+    user.about = '53 goda'
+    user.email ='voldemar@mail.ru'
+    db_sess = db_session.create_session()
+    db_sess.add(user)
+    db_sess.commit()
