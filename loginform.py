@@ -9,7 +9,7 @@ from wtforms.validators import DataRequired
 
 class LoginForm(FlaskForm):
     username = StringField('логин', validators=[DataRequired()])
-    password = PasswordField('password', validators=[DataRequired()])
+    password = PasswordField('пароль', validators=[DataRequired()])
     remember_me = BooleanField('Запомнить')
     file = FileField('файл')
     submit = SubmitField('Вход')

@@ -4,12 +4,13 @@ from flask import render_template
 import json
 import requests
 from sqlalchemy.orm import sessionmaker
-
 from loginform import LoginForm
 from data import db_session
 from mail_sender import send_mail
 from dotenv import load_dotenv
 from data.users import User
+from data.news import News
+from forms.user import RegisterForm
 
 app = Flask(__name__)
 
@@ -33,7 +34,6 @@ def well():  # колодец
 def index():
     db_sess = db_session.create_session()
     news = db_sess.query(News).filter(News.is_private !=True)
-
     # param = {}
     # param['username'] = 'Слушатель'
     # param['title'] = 'Расширяем шаблоны'
@@ -69,6 +69,26 @@ def slogan():
 @app.route('/success')
 def success():
     return 'Success'
+
+
+@app.route('/register', methods=['GET', 'POST'])
+def register():
+    form = RegisterForm()
+    if form.validate_on_submit():
+        if form.password.data != form.password_again.data:
+            return render_template('register.html', title='проблемы с регистрацией', message='пароли не совпадают',
+                                   form=form)
+        db_sess = db_session.create_session()
+        if db_sess.query(User).filter(User.email == form.email.data).first():
+            return render_template('register.html', title='проблемы с регистрацией', message='почта уже зарегина',
+                                   form=form)
+        user = User(name=form.name.data, email=form.email.data, about=form.about.data)
+        user.set_password(form.password.data)
+        db_sess.add(user)
+        db_sess.commit()
+        return redirect('/login')
+    return render_template('register.html', title='Регистрация', form=form)
+
 
 
 @app.route('/login', methods=['GET', 'POST'])
@@ -161,7 +181,7 @@ if __name__ == '__main__':
     # db_sess.commit()
     # работу с БД начинают  с открытия сессии
     # db_sess = db_session.create_session()
-    # user = db_sess.query(User).filter(User.id == 1).first()
+    # user = db_sess.query(User).filter(User.id).first()
     # subj = News(title = 'Новость от Владимра номер 1', content='Пошел на обед',
     #             is_private=False)
     # db_sess.add(news)
