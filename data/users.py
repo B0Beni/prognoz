@@ -18,4 +18,6 @@ class User(SqlAlchemyBase):
                                     default=datetime.datetime.now())
     news = orm.relationship("News", back_populates='user')
 
-
+    #  __repr__ позволяет вытаскивать из обьектов нужные
+    def __repr__(self):
+        return f'{self.name} - {self.email}'

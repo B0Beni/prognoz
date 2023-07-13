@@ -31,10 +31,13 @@ def well():  # колодец
 @app.route('/')
 @app.route('/index')
 def index():
-    param = {}
-    param['username'] = 'Слушатель'
-    param['title'] = 'Расширяем шаблоны'
-    return render_template('index.html', **param)
+    db_sess = db_session.create_session()
+    news = db_sess.query(News).filter(News.is_private !=True)
+
+    # param = {}
+    # param['username'] = 'Слушатель'
+    # param['title'] = 'Расширяем шаблоны'
+    return render_template('index.html', title='Новости', news=news)
 
 
 @app.route('/odd_even')
@@ -148,11 +151,32 @@ def post_form():
 
 if __name__ == '__main__':
     db_session.global_init('db/news.sqlite')
-    # app.run(host='127.0.0.1', port=5000, debug=True)
-    user = User()
-    user.name = 'Mixa'
-    user.about = 'santexnik'
-    user.email ='tvv11@mail.ru'
-    db_sess = db_session.create_session()
-    db_sess.add(user)
-    db_sess.commit()
+    app.run(host='127.0.0.1', port=5000, debug=True)
+    # user = User()
+    # user.name = 'Mixa'
+    # user.about = 'santexnik'
+    # user.email ='tvv11@mail.ru'
+    # db_sess = db_session.create_session()
+    # db_sess.add(user)
+    # db_sess.commit()
+    # работу с БД начинают  с открытия сессии
+    # db_sess = db_session.create_session()
+    # user = db_sess.query(User).filter(User.id == 1).first()
+    # subj = News(title = 'Новость от Владимра номер 1', content='Пошел на обед',
+    #             is_private=False)
+    # db_sess.add(news)
+    # user.news.append(subj)
+    # db_sess.commit()
+    # с помощью обьекта сессии происходит обращение к таблицам
+    # user = db_sess.query(User).first()
+    # print(user)
+    # print(user.name)
+    # print(user.email)
+    # users = db_sess.query(User).all()
+    # for user in users:
+    #     print(user)
+    # users = db_sess.query(User).filter(User.id > 1)
+    # for user in users:
+    #     print(user)
+# | или -  в сложных запросах
+# & и  -  в сложных запросах
