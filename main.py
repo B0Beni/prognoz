@@ -150,9 +150,9 @@ if __name__ == '__main__':
     db_session.global_init('db/news.sqlite')
     # app.run(host='127.0.0.1', port=5000, debug=True)
     user = User()
-    user.name = 'Voldemar'
-    user.about = '53 goda'
-    user.email ='voldemar@mail.ru'
+    user.name = 'Mixa'
+    user.about = 'santexnik'
+    user.email ='tvv11@mail.ru'
     db_sess = db_session.create_session()
     db_sess.add(user)
     db_sess.commit()
