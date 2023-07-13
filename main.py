@@ -1,6 +1,6 @@
 # https://github.com/ipapMaster/flaskLessons
 from flask import Flask, url_for, request, redirect
-from flask import render_template
+from flask import render_template, make_response
 import json
 import requests
 from sqlalchemy.orm import sessionmaker
@@ -154,6 +154,18 @@ def load_photo():
         f = request.files['file']  # request.form.get('file')
         f.save('./static/images/loaded.png')
         return '<h1>Файл у Вас на сервере</h1>'
+
+@app.route('/cookie_test')
+def cookie_test():
+    visit_count = int(request.cookies.get('visit_count', 0))
+    if visit_count:
+        res = make_response(f' посещений {visit_count + 1}')
+        res.set_cookie('visit_count', str(visit_count +1), max_age=60 * 60 * 24 * 365 * 2)
+    else:
+        res = make_response('вы впервые здесь за 2 года')
+        res.set_cookie('visit_count', '1', max_age=60 * 60 * 24 * 365 * 2)
+    return res
+
 
 
 @app.route('/mail', methods=['GET'])
