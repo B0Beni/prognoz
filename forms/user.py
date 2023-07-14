@@ -6,10 +6,10 @@ from werkzeug.security import check_password_hash
 
 
 class RegisterForm(FlaskForm):
-    email = EmailField('Po4ta', validators=[DataRequired()])
-    password = PasswordField('Parol', validators=[DataRequired()])
-    password_again = PasswordField('Parol', validators=[DataRequired()])
-    name = StringField('Vawe imya', validators=[DataRequired()])
-    about = TextAreaField('Nemnogo o sebe')  #
-    submit = SubmitField('Voiti')
+    email = EmailField('Электронный адрес', validators=[DataRequired()])
+    password = PasswordField('Придумайте пароль', validators=[DataRequired()])
+    password_again = PasswordField('Повторите пароль', validators=[DataRequired()])
+    name = StringField('Введите ваше имя', validators=[DataRequired()])
+    about = TextAreaField('Если хотите, расскажите о себе')  #
+    submit = SubmitField('Зарегестрироваться')
 

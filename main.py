@@ -1,21 +1,40 @@
 # https://github.com/ipapMaster/flaskLessons
-from flask import Flask, url_for, request, redirect
-from flask import render_template, make_response
-import json
+import datetime
+
 import requests
-from sqlalchemy.orm import sessionmaker
-from loginform import LoginForm
+from flask import Flask, request, redirect, abort
+from flask import render_template, make_response, session
+from flask_login import LoginManager, login_user, login_required
+from flask_login import logout_user, current_user
+
 from data import db_session
-from mail_sender import send_mail
-from dotenv import load_dotenv
-from data.users import User
 from data.news import News
+from data.users import User
+from forms.add_news import NewsForm
 from forms.user import RegisterForm
+from loginform import LoginForm
+from mail_sender import send_mail
 
 app = Flask(__name__)
+login_manager = LoginManager()
+login_manager.init_app(app)
 
 app.config['SECRET_KEY'] = 'too short key'
 app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:///db/news.sqlite'
+app.config['PERMANENT_SESSION_LIFETIME'] = datetime.timedelta(days=365)  # год
+
+
+@login_manager.user_loader
+def load_user(user_id):
+    db_sess = db_session.create_session()
+    return db_sess.query(User).get(user_id)
+
+
+@app.route('/logout')
+@login_required
+def logout():
+    logout_user()
+    return redirect('/')
 
 
 # ошибка 404
@@ -29,15 +48,24 @@ def well():  # колодец
     return render_template('well.html')
 
 
+@app.errorhandler(401)
+def http_401_handler(error):
+    return redirect('/login')
+
+
 @app.route('/')
 @app.route('/index')
 def index():
+    # работу с БД начинаем с открытия сессии
     db_sess = db_session.create_session()
-    news = db_sess.query(News).filter(News.is_private !=True)
-    # param = {}
-    # param['username'] = 'Слушатель'
-    # param['title'] = 'Расширяем шаблоны'
-    return render_template('index.html', title='Новости', news=news)
+    if current_user.is_authenticated:
+        news = db_sess.query(News).filter(
+            (News.user == current_user) | (News.is_private != True))
+    else:
+        news = db_sess.query(News).filter(News.is_private != True)
+    return render_template('index.html',
+                           title='Новости',
+                           news=news)
 
 
 @app.route('/odd_even')
@@ -45,19 +73,54 @@ def odd_even():
     return render_template('odd_even.html', number=3)
 
 
-@app.route('/news')
-def news():
-    with open("news.json", "rt", encoding="utf-8") as f:
-        news_list = json.loads(f.read())
-    return render_template('news.html',
-                           title='Новости',
-                           news=news_list)
-    # lst = ['ANN', 'TOM', 'BOB']
-    # return render_template('news.html', title="FOR", news=lst)
+@app.route('/news', methods=['GET', 'POST'])
+@login_required
+def add_news():
+    form = NewsForm()
+    if form.validate_on_submit():
+        db_sess = db_session.create_session()
+        news = News()  # ORM-модель News
+        news.title = form.title.data
+        news.content = form.content.data
+        news.is_private = form.is_private.data
+        current_user.news.append(news)
+        db_sess.merge(current_user)  # слияние сессии с текущим пользователем
+        db_sess.commit()
+        return redirect('/')
+    return render_template('news.html', title='Добавление новости', form=form)
 
 
-@app.route('/vartest')
-def vartest():
+@app.route('/news/<int:id>', methods=['GET', 'POST'])
+@login_required
+def edit_news(id):
+    print(id)
+    form = NewsForm()
+    if request.method == 'GET':
+        db_sess = db_session.create_session()
+        news = db_sess.query(News).filter(News.id == id, News.user == current_user).first()
+        print(current_user, news)
+        if news:
+            form.title.data = news.title
+            form.content.data = news.content
+            form.is_private.data = news.is_private
+        else:
+            abort(404)
+    if form.validate_on_submit():
+        db_sess = db_session.create_session()
+        news = db_sess.query(News).filter(News.id == id, News.user == current_user).first()
+        if news:
+            news.title = form.title.data
+            news.content = form.content.data
+            news.is_private = form.is_private.data
+            db_sess.commit()
+            return redirect('/')
+        else:
+            abort(404)
+    return render_template('news.html', title='Изменить новость', form=form)
+
+
+@app.route('/var_test')
+def var_test():
     return render_template('var_test.html', title='Переменные в HTML')
 
 
@@ -76,13 +139,19 @@ def register():
     form = RegisterForm()
     if form.validate_on_submit():
         if form.password.data != form.password_again.data:
-            return render_template('register.html', title='проблемы с регистрацией', message='пароли не совпадают',
+            return render_template('register.html',
+                                   title='Проблемы с регистрацией',
+                                   message='Пароли не совпадают',
                                    form=form)
         db_sess = db_session.create_session()
         if db_sess.query(User).filter(User.email == form.email.data).first():
-            return render_template('register.html', title='проблемы с регистрацией', message='почта уже зарегина',
+            return render_template('register.html',
+                                   title='Проблемы с регистрацией',
+                                   message='Такой пользователь уже есть',
                                    form=form)
-        user = User(name=form.name.data, email=form.email.data, about=form.about.data)
+        user = User(name=form.name.data,
+                    email=form.email.data,
+                    about=form.about.data)
         user.set_password(form.password.data)
         db_sess.add(user)
         db_sess.commit()
@@ -90,12 +159,18 @@ def register():
     return render_template('register.html', title='Регистрация', form=form)
 
 
-
 @app.route('/login', methods=['GET', 'POST'])
 def login():
     form = LoginForm()
     if form.validate_on_submit():
-        return redirect('/success')
+        db_sess = db_session.create_session()
+        user = db_sess.query(User).filter(User.email == form.email.data).first()
+        if user and user.check_password(form.password.data):
+            login_user(user, remember=form.remember_me.data)
+            return redirect('/')
+        return render_template('login.html', title='Повторная авторизация',
+                               message='Неверный логин или пароль',
+                               form=form)
     return render_template('login.html',
                            title='Авторизация',
                            form=form)
@@ -108,6 +183,8 @@ def weather_form():
                                title='Выбор города')
     elif request.method == 'POST':
         town = request.form.get('town')
+        if not town.strip():
+            town = 'Москва'
         data = {}
         key = 'c747bf84924be997ff13ac5034fa3f86'
         url = 'http://api.openweathermap.org/data/2.5/weather'
@@ -155,17 +232,35 @@ def load_photo():
         f.save('./static/images/loaded.png')
         return '<h1>Файл у Вас на сервере</h1>'
 
+
 @app.route('/cookie_test')
 def cookie_test():
     visit_count = int(request.cookies.get('visit_count', 0))
-    if visit_count:
-        res = make_response(f' посещений {visit_count + 1}')
-        res.set_cookie('visit_count', str(visit_count +1), max_age=60 * 60 * 24 * 365 * 2)
+    if visit_count != 0 and visit_count <= 20:
+        res = make_response(f'Были уже {visit_count + 1} раз')
+        res.set_cookie('visit_count',
+                       str(visit_count + 1),
+                       max_age=60 * 60 * 24 * 365 * 2)
+    elif visit_count > 20:
+        print('Мы тут')
+        res = make_response(f'Были уже {visit_count + 1} раз')
+        res.set_cookie('visit_count', '1', max_age=0)
     else:
-        res = make_response('вы впервые здесь за 2 года')
-        res.set_cookie('visit_count', '1', max_age=60 * 60 * 24 * 365 * 2)
+        res = make_response('Вы впервые здесь за 2 года')
+        res.set_cookie('visit_count', '1',
+                       max_age=60 * 60 * 24 * 365 * 2)
     return res
 
+
+# Let's Encrypt
+@app.route('/session_test')
+def session_test():
+    visit_count = session.get('visit_count', 0)
+    session['visit_count'] = visit_count + 1
+    if session['visit_count'] > 3:
+        session.pop('visit_count', None)
+    session.permanent = True  # Максимум 31 день
+    return make_response(f'Мы тут были уже {visit_count + 1} раз.')
 
 
 @app.route('/mail', methods=['GET'])
@@ -184,31 +279,3 @@ def post_form():
 if __name__ == '__main__':
     db_session.global_init('db/news.sqlite')
     app.run(host='127.0.0.1', port=5000, debug=True)
-    # user = User()
-    # user.name = 'Mixa'
-    # user.about = 'santexnik'
-    # user.email ='tvv11@mail.ru'
-    # db_sess = db_session.create_session()
-    # db_sess.add(user)
-    # db_sess.commit()
-    # работу с БД начинают  с открытия сессии
-    # db_sess = db_session.create_session()
-    # user = db_sess.query(User).filter(User.id).first()
-    # subj = News(title = 'Новость от Владимра номер 1', content='Пошел на обед',
-    #             is_private=False)
-    # db_sess.add(news)
-    # user.news.append(subj)
-    # db_sess.commit()
-    # с помощью обьекта сессии происходит обращение к таблицам
-    # user = db_sess.query(User).first()
-    # print(user)
-    # print(user.name)
-    # print(user.email)
-    # users = db_sess.query(User).all()
-    # for user in users:
-    #     print(user)
-    # users = db_sess.query(User).filter(User.id > 1)
-    # for user in users:
-    #     print(user)
-# | или -  в сложных запросах
-# & и  -  в сложных запросах
